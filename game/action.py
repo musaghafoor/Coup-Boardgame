@@ -11,6 +11,7 @@ class Action:
         self.player = player
         self.target = target
         self.coins_needed = coins_needed
+        self.can_block = [] # List of influences that can block this action
 
     def execute(self):
         if self.player.coins < self.coins_needed:
@@ -23,11 +24,21 @@ class Action:
 
 
 class Income(Action):
+    #Do i include super.execute() here?
     def perform_action(self):
         self.player.coins += 1
 
+# class ForeignAid(Action):
+#     def perform_action(self):
+#         self.player.coins += 2
+
 class ForeignAid(Action):
+    def __init__(self, game, player):
+        super().__init__(game, player)
+        self.can_block = ["Duke"]
+
     def perform_action(self):
+        super().execute()
         self.player.coins += 2
 
 class Coup(Action):
@@ -46,6 +57,7 @@ class Tax(Action):
 class Assassinate(Action):
     def __init__(self, game, player, target):
         super().__init__(game, player, target, coins_needed=3)
+        self.can_block = ["Contessa"]
 
     def perform_action(self):
         super().execute()
@@ -55,6 +67,7 @@ class Assassinate(Action):
 class Steal(Action):
     def __init__(self, game, player, target):
         super().__init__(game, player, target)
+        self.can_block = ["Captain", "Ambassador"]
 
     def perform_action(self):
         super().execute()  # This will check for common conditions like if the target has influences left.
