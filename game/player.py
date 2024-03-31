@@ -180,7 +180,7 @@ class Player:
 
         # Update player's hand by removing the returned cards and keeping the new ones
         self.hand = temp_hand
-        
+
         if len(self.hand) != 2:
             raise GameException("Error: Player's hand should have exactly two cards after exchange.")
 
@@ -198,6 +198,24 @@ class Player:
     def change_cards(self):
         pass
 
+    # def show_card(self):
+    #     pass
+
+    #Temporary solution?
+    def show_card(self, card_index):
+        """
+        Allows the player to reveal one of their cards by index.
+        Returns the card that was revealed.
+        """
+        if not self.hand:
+            raise GameException(f"{self.name} has no cards to show.")
+        if card_index < 0 or card_index >= len(self.hand):
+            raise GameException("Invalid card index.")
+
+        # Reveal the specified card.
+        revealed_card = self.hand[card_index]
+        print(f"{self.name} reveals a {revealed_card}.")
+        return revealed_card
 
     def __str__(self):
         """

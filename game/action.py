@@ -8,11 +8,12 @@ Defines the action module for Coup. This module contains classes and functions r
 from exceptions.game_exceptions import *
 
 class Action:
-    def __init__(self, game, player, target=None, coins_needed=0):
+    def __init__(self, game, player, target=None, coins_needed=0, is_blockable=False):
         self.game = game
         self.player = player
         self.target = target
         self.coins_needed = coins_needed
+        self.is_blockable = is_blockable
         self.can_block = [] # List of influences that can block this action
 
     def execute(self):
@@ -36,7 +37,7 @@ class Income(Action):
 
 class ForeignAid(Action):
     def __init__(self, game, player):
-        super().__init__(game, player)
+        super().__init__(game, player, is_blockable=True)
         self.can_block = ["Duke"]
 
     def perform_action(self):
@@ -53,13 +54,16 @@ class Coup(Action):
         self.player.lose_coins(7)
 
 class Tax(Action):
+    def __init__(self, game, player):
+        super().__init__(game, player, is_blockable=True)
+
     def perform_action(self):
         super().execute()
         self.player.gain_coins(3)
 
 class Assassinate(Action):
     def __init__(self, game, player, target):
-        super().__init__(game, player, target, coins_needed=3)
+        super().__init__(game, player, target, coins_needed=3, is_blockable=True)
         self.can_block = ["Contessa"]
 
     def perform_action(self):
@@ -87,7 +91,7 @@ class Assassinate(Action):
 
 class Steal(Action):
     def __init__(self, game, player, target):
-        super().__init__(game, player, target)
+        super().__init__(game, player, target, is_blockable=True)
         self.can_block = ["Captain", "Ambassador"]
 
     def perform_action(self):
@@ -107,7 +111,7 @@ class Steal(Action):
 
 class Exchange(Action):
     def __init__(self, game, player):
-        super().__init__(game, player)
+        super().__init__(game, player, is_blockable=True)
 
     def perform_action(self):
 
