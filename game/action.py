@@ -2,6 +2,8 @@
 Defines the action module for Coup. This module contains classes and functions related to player actions. 
 """
 #GO THROUGH THE ERRORS AND MAKE CUSTOM EXCEPTIONS
+#TODO Maybe add is blockable to each action? 
+# NEED A RETURN CARD FUNCTION
 
 from exceptions.game_exceptions import *
 
@@ -16,17 +18,17 @@ class Action:
     def execute(self):
         if self.player.coins < self.coins_needed:
             raise NotEnoughCoins(self.coins_needed)
-        if self.target is not None and not self.target.hand:
+        if self.target is not None and self.target.is_eliminated:
                     raise InvalidTarget("Target is dead!")
     
     def perform_action(self):
-        raise GameException("Method not implemented")
+        raise NotImplemented("Method not implemented")
 
 
 class Income(Action):
-    #Do i include super.execute() here?
     def perform_action(self):
-        self.player.coins += 1
+        super().execute()
+        self.player.gain_coins(1)
 
 # class ForeignAid(Action):
 #     def perform_action(self):
@@ -39,7 +41,7 @@ class ForeignAid(Action):
 
     def perform_action(self):
         super().execute()
-        self.player.coins += 2
+        self.player.gain_coins(2)
 
 class Coup(Action):
     def __init__(self, game, player, target):
@@ -48,11 +50,12 @@ class Coup(Action):
     def perform_action(self):
         super().execute()
         self.target.lose_influence()
-        self.player.coins -= 7
+        self.player.lose_coins(7)
 
 class Tax(Action):
     def perform_action(self):
-        self.player.coins += 3
+        super().execute()
+        self.player.gain_coins(3)
 
 class Assassinate(Action):
     def __init__(self, game, player, target):
@@ -62,7 +65,25 @@ class Assassinate(Action):
     def perform_action(self):
         super().execute()
         self.target.lose_influence()
-        self.player.coins -= 3
+        self.player.lose_coins(3)
+
+# class Steal(Action):
+#     def __init__(self, game, player, target):
+#         super().__init__(game, player, target)
+#         self.can_block = ["Captain", "Ambassador"]
+
+#     def perform_action(self):
+#         super().execute()  # This will check for common conditions like if the target has influences left.
+
+#         if self.target.coins >= 2:
+#             stolen_coins = 2
+#         elif self.target.coins == 1:
+#             stolen_coins = 1
+#         else:
+#             raise GameException("Target has no coins to steal from.")
+
+#         self.target.coins -= stolen_coins
+#         self.player.coins += stolen_coins
 
 class Steal(Action):
     def __init__(self, game, player, target):
@@ -79,8 +100,8 @@ class Steal(Action):
         else:
             raise GameException("Target has no coins to steal from.")
 
-        self.target.coins -= stolen_coins
-        self.player.coins += stolen_coins
+        self.target.lose_coins(stolen_coins)
+        self.player.gain_coins(stolen_coins)
 
 
 
@@ -96,12 +117,11 @@ class Exchange(Action):
         # Draw two cards from the deck
         drawn_cards = [self.game.deck.draw_card(), self.game.deck.draw_card()]
 
-        # Add the two drawn cards to the players hand
-        #self.player.hand.extend(drawn_cards)
-        self.player.hand += drawn_cards
+        returned_cards = self.player.select_exchange_cards(drawn_cards)
 
-        # Return two cards back to the deck
-        return drawn_cards
+        # Put the returned cards back into the deck
+        for card in returned_cards:
+            self.game.deck.return_card(card)
 
 
 

@@ -29,3 +29,8 @@ class Deck:
         if not self.cards:
             raise NoCardsLeftInDeck("There are no cards left in the deck!")
         return self.cards.pop()
+
+    def return_card(self, card):
+        """Returns a card to the deck and shuffles it."""
+        self.cards.append(card)
+        self.shuffle()
