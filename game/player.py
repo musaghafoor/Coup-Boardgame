@@ -66,19 +66,6 @@ class Player:
         if eliminated:
             print(f"{self.name} is eliminated!")
 
-    # # Not sure if i need this method. It sets eliminated based on certain things. Im confused about check eliminated and is_eliminated
-    # def set_eliminated(self):
-    #     # Update the _is_eliminated status based on game logic, such as hand size
-    #     if len(self.hand) == 0 or self._is_eliminated:
-    #         self._is_eliminated = True
-    #         print(f"{self.name} is eliminated!")
-    #         #maybe add print lost influences?
-    
-
-    # def set_eliminated(self, eliminated):
-    #     if not isinstance(eliminated, bool):
-    #         raise GameException("Cannot set eliminated to a non-boolean value!")
-    #     self._is_eliminated = eliminated
 
     #should call choose influence to die
     def lose_influence(self):
@@ -198,24 +185,31 @@ class Player:
     def change_cards(self):
         pass
 
-    # def show_card(self):
-    #     pass
+    def has_card(self, card_name):
+        for card in self.hand:
+            if card.name == card_name:
+                return True
+        return False
 
-    #Temporary solution?
-    def show_card(self, card_index):
-        """
-        Allows the player to reveal one of their cards by index.
-        Returns the card that was revealed.
-        """
-        if not self.hand:
-            raise GameException(f"{self.name} has no cards to show.")
-        if card_index < 0 or card_index >= len(self.hand):
-            raise GameException("Invalid card index.")
 
-        # Reveal the specified card.
-        revealed_card = self.hand[card_index]
-        print(f"{self.name} reveals a {revealed_card}.")
-        return revealed_card
+    def show_card(self, card_name):
+        for index, card in enumerate(self.hand):
+            if card.name == card_name:
+                #print(f"{self.name} shows their {card.name} card.")
+                return index  # Return the card's position
+        return None  # Card not found
+
+    def swap_card(self, card_index):
+        if card_index is not None and 0 <= card_index < len(self.hand):
+            removed_card = self.hand.pop(card_index)  # Remove the card from hand
+            new_card = self.game.deck.draw_card()  # Assume the player has access to the game's deck
+            self.hand.append(new_card)  # Add the new card to hand
+            self.game.deck.return_card(removed_card)  # Return the old card to the deck
+            print(f"{self.name} swapped a {removed_card.name} for a new card.")
+            # Other necessary operations...
+        else:
+            print("Invalid card index for swapping.")
+    
 
     def __str__(self):
         """
@@ -223,65 +217,4 @@ class Player:
         """
         return self.name
     
-
-    # # Exchange cards with the Court. First take 2 random cards from the Court deck. 
-    # # Choose which, if any, to exchange with your face-down cards. Then return two cards to the Court deck.
-    # #draw two cards. Pick up your two cards. Shuffle them together so nobody knows what you are keeping, then return two of your choice to the deck (shuffle the deck afterwards).
-    # def select_exchange_cards(self, two_random_cards):
-    #     if len(self.hand) + len(two_random_cards)> 4:
-    #         raise GameException("Player can have a max of 4 cards after exchange!")
-    #     # Add the two randomly drawn cards to the player's hand
-    #     self.hand.extend(two_random_cards)
-
-    #     # Display all cards, indicating which ones are newly drawn
-    #     print(f"{self.name}, you have drawn:")
-    #     for card in two_random_cards:
-    #         print(f"- {card} (newly drawn)")
-        
-    #     # print(f"{self.name}, your current hand now includes:")
-    #     # for i, card in enumerate(self.hand, start=1): #consider adding newly drawn in the print statement next to the new cards
-    #     #         print(f"{i}: {card}")
-            
-        
-    #     returned_cards = []
-
-    #     #for i in range(2): #prompt user to select two cards to return
-    #     # while len(returned_cards) < 2: #ensures that the loop runs until two cards are returned
-    #     #     try:
-    #     #         print(self.display_cards())
-    #     #         choice = int(input("Select a card number to return: "))
-    #     #         if choice in range(1, len(self.hand) + 1):
-    #     #             returned_card = self.hand.pop(choice - 1)
-    #     #             returned_cards.append(returned_card)
-    #     #             print(f"{self.name} you have returned the {returned_card} card.")
-    #     #         else:
-    #     #             print("Invalid choice, please select a valid card number.")
-    #     #     except ValueError:
-    #     #         print("Please input a number!")
-
-    #     while len(returned_cards) < 2: #ensures that the loop runs until two cards are returned
-    #         try:
-    #             print(self.display_cards())
-    #             choice = int(input("Select a card number to return: "))
-    #             if choice in range(1, len(self.hand) + 1):
-    #                 chosen_card = self.hand[choice - 1]
-    #                 if chosen_card not in returned_cards:
-    #                     returned_cards.append(chosen_card)
-    #                     self.hand.remove(chosen_card)
-    #                     print(f"{self.name} you have returned the {chosen_card} card.")
-    #                 else:
-    #                     print("You have already selected this card to return, choose another.")
-    #             else:
-    #                 print("Invalid choice, please select a valid card number.")
-    #         except ValueError:
-    #             print("Please input a number!")
-
-    #     # print(f"{self.name}, your current hand now includes:")
-    #     # for i, card in enumerate(self.hand, start=1):
-    #     #         print(f"{i}: {card}")
-                    
-    #     self.hand = self.hand[-2:] #ensures that the  players hand only has two cards
-    #     print(self.display_cards())
-
-    #     return returned_cards
 

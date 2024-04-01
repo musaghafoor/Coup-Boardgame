@@ -8,7 +8,7 @@ Defines the action module for Coup. This module contains classes and functions r
 from exceptions.game_exceptions import *
 
 class Action:
-    def __init__(self, game, player, target=None, coins_needed=0, is_blockable=False, requires_influence=False, action_name =''):
+    def __init__(self, game, player, target=None, coins_needed=0, is_blockable=False, requires_influence=False, action_name ='', required_card=''):
         self.game = game
         self.player = player
         self.target = target
@@ -17,6 +17,8 @@ class Action:
         self.requires_influence = requires_influence
         self.can_block = [] # List of influences that can block this action
         self.action_name = action_name
+        self.required_card = required_card
+
 
 
     def execute(self):
@@ -57,7 +59,7 @@ class Coup(Action):
 
 class Tax(Action):
     def __init__(self, game, player):
-        super().__init__(game, player, is_blockable=True, requires_influence=True, action_name='Tax')
+        super().__init__(game, player, is_blockable=True, requires_influence=True, action_name='Tax', required_card= "Duke")
 
     def perform_action(self):
         super().execute()
@@ -65,7 +67,8 @@ class Tax(Action):
 
 class Assassinate(Action):
     def __init__(self, game, player, target):
-        super().__init__(game, player, target, coins_needed=3, is_blockable=True, action_name='Assassinate')
+        super().__init__(game, player, target, coins_needed=3, is_blockable=True, action_name='Assassinate', required_card='Assassin')
+
         self.can_block = ["Contessa"]
 
     def perform_action(self):
@@ -93,7 +96,7 @@ class Assassinate(Action):
 
 class Steal(Action):
     def __init__(self, game, player, target):
-        super().__init__(game, player, target, is_blockable=True, requires_influence=True, action_name='Steal')
+        super().__init__(game, player, target, is_blockable=True, requires_influence=True, action_name='Steal', required_card= "Captain")
         self.can_block = ["Captain", "Ambassador"]
 
     def perform_action(self):
@@ -113,7 +116,8 @@ class Steal(Action):
 
 class Exchange(Action):
     def __init__(self, game, player):
-        super().__init__(game, player, is_blockable=True, requires_influence=True, action_name='Exchange')
+        super().__init__(game, player, is_blockable=True, requires_influence=True, action_name='Exchange',required_card= "Ambassador")
+
 
     def perform_action(self):
 

@@ -55,6 +55,8 @@ class Game:
     def play_game(self):
         while not self.is_game_over():
             self.play_turn(self.players[self.current_player_index])
+            if self.game_over:
+                break  # End the game loop if the game has ended
             self.next_player()
 
         if self.is_game_over():
@@ -70,7 +72,6 @@ class Game:
     def choose_action(self, player):
         pass
 
-        # TODO Remove the results of handling challenge. let handle challenge handle it.
     def execute_action(self, player):
         # 1. Current player chooses action
         action = self.choose_action(player)
@@ -82,37 +83,38 @@ class Game:
             if challenger:
                 # Returns False if challenger loses challenge. (Player wins)
                 challenge_result = self.handle_challenge(player, challenger, action)
-                if not challenge_result: #If player wins challenge
-                    # Challenging player loses influence
-                    # Player changes card
-                    challenger.lose_influence() #If last card, then challenger will be eliminated. (handled in player class)
-                    player.change_card() # Player returns card to deck and receives random card
-                    print(f"{player.name} has won the challenge. Move to block check")
+                if not challenge_result: #If player wins challenge, challenger loses influence
+                    if self.is_game_over(): # Check if 1 player remaining
+                        self.game_over = True
+                        return
+                    print("Move to block check")
+                    
                 else:
                     # Challenger wins the challenge
-                    # Player loses influence
-                    player.lose_influence() #If last card, then player will be eliminated. (handled in player class)
-                    print(f"{player.name} has lost the challenge. Turn ends.")
+                    print("Turn ends.")
                     return #Turn ends
                 
         # If action can be blocked, proceed to block check
         # Only the target can block the action.
         if action.is_blockable and not player.is_eliminated:
             # Prompt target to block action
-            blocker = self.prompt_block(action.target, action)
+            blocker = self.prompt_block(action.target, player, action)
             # If target wishes to block action, execute block
             if blocker:
-                # Does player challenge blocker?
-                player_challenge_block = self.prompt_challenge_block(player, blocker, action)
-                if player_challenge_block: #If player whishes to challenge blocker
+                # Does player want to challenge blocker?
+                player_challenge_blocker = self.wants_to_challenge(player, blocker, action)
+                #player_challenge_block = self.prompt_challenge_block(player, blocker, action)
+                if player_challenge_blocker: #If player whishes to challenge blocker
                     # Player challenges the blocker
                     challenge_block_result = self.handle_challenge(blocker, player, action)
                     # If player wins this challenge it will return true here
-                    if challenge_block_result: #If player wins challenge
-                        blocker.lose_influence() #If last card, then blocker will be eliminated. (handled in player class)
+                    if challenge_block_result: #If player wins challenge (blocker loses influence)
+                        if self.is_game_over(): # Check if 1 player remaining
+                            self.game_over = True
+                            return
+                        print(f"{player.name} now moves to perform action")
                     else: # If blocker wins the challenge
-                        player.lose_influence() #If last card, then player will be eliminated. (handled in player class)
-                        blocker.change_card() # blocker returns card to deck and receives random card
+                        print("Turn ends.")
                         return # Turn ends
                 else: # If player does not challenge blocker
                     return #Turn ends as player does not challenge blocker
@@ -143,10 +145,18 @@ class Game:
         # No one challenged
         return None
 
+    def prompt_block(self, target, player, action):
+        print(f"{target.name}, do you want to block {player.name}'s {action.name}?")
+        while True:
+            decision = input("Type y for yes, n for no: ").strip().lower()
+            if decision == 'y':
+                return target
+            elif decision == 'n':
+                return None
+            else:
+                print("Invalid input, please enter 'y' for yes or 'n' for no.")
 
-
-
-    def handle_challenge(self, player, challenger, action):
+    
         """
         Return false if challenger loses challenge. (Player wins)
         If player has the influence challenged:
@@ -158,45 +168,64 @@ class Game:
             return true (Player loses)
 
         """
-        pass
-
-    # TODO Handle losing cards etc. Also find a way to check if player has action card.
     def handle_challenge(self, player, challenger, action):
+        card_name = action.required_card
+        card_index = player.show_card(card_name)
 
-        # Check if the player has the card they claimed to have
-        if player.has_card(action.required_card):
-            # Prompt player to decide whether to show the card
-            if self.prompt_show_card(player, action.required_card):
-                print(f"{player.name} has shown {action.required_card} to prove the action.")
-                
-                # Player shows the card, challenger loses an influence
-                challenger.lose_influence()
-                if challenger.is_eliminated:
-                    print(f"{challenger.name} is eliminated!")
-
-                # Player swaps the shown card with a new one from the deck
-                player.swap_card(action.required_card)
-                return False  # Challenger loses the challenge
-            else:
-                print(f"{player.name} has decided not to show the card.")
+        if card_index is not None:
+            while True:
+                decision = input(f"{player.name}, do you want to show the {action.action_name} card to win the challenge? (y/n): ").strip().lower()
+                if decision == 'y':
+                    print(f"{player.name} has shown the {card_name} card to win the challenge.")
+                    challenger.lose_influence()
+                    player.swap_card(card_index)
+                    return False
+                elif decision == 'n':
+                    print(f"{player.name} has lost the challenge")
+                    player.lose_influence()
+                    return True
+                else:
+                    print("Invalid input, please enter 'y' for yes or 'n' for no.")
         else:
-            print(f"{player.name} does not have the required card for the action.")
+            print(f"{player.name} does not have the {card_name} card and has lost the challenge")
+            player.lose_influence()
+            return True
 
-        # Player loses an influence because they either chose not to show the card or didn't have it
-        player.lose_influence()
-        if player.is_eliminated:
-            print(f"{player.name} is eliminated!")
+    # def choose_action(self, player):
+    #     # List of available actions
+    #     actions = {
+    #         "1": Income(self, player),
+    #         "2": ForeignAid(self, player),
+    #         "3": Coup(self, player, self.choose_target(player)),  # Assuming choose_target is implemented
+    #         "4": Tax(self, player),
+    #         "5": Assassinate(self, player, self.choose_target(player)),
+    #         "6": Steal(self, player, self.choose_target(player)),
+    #         "7": Exchange(self, player)
+    #     }
 
-        return True  # Challenger wins the challenge
+    #     # Display available actions
+    #     print(f"{player.name}, choose an action:")
+    #     for key, action in actions.items():
+    #         print(f"{key}: {action.action_name}")
 
-    def prompt_show_card(self, player, card):
-        """
-        Asks the player if they want to show the card to counter the challenge.
+    #     # Player chooses an action
+    #     while True:
+    #         choice = input("Enter the number of the action you want to perform: ").strip()
+    #         if choice in actions:
+    #             return actions[choice]
+    #         else:
+    #             print("Invalid choice, please enter a valid number.")
 
-        :param player: The player who is being prompted.
-        :param card: The card in question.
-        :return: True if the player decides to show the card, False otherwise.
-        """
-        response = input(f"{player.name}, do you want to show the {card} to counter the challenge? (yes/no): ")
-        return response.strip().lower() == 'yes'
+    # # Example usage of choose_target, assuming you need to select a target for some actions
+    # def choose_target(self, player):
+    #     print(f"{player.name}, choose a target for your action:")
+    #     potential_targets = [p for p in self.players if p != player and not p.is_eliminated]
+    #     for i, target in enumerate(potential_targets, 1):
+    #         print(f"{i}: {target.name}")
 
+    #     while True:
+    #         target_choice = input("Enter the number of the player you want to target: ").strip()
+    #         if target_choice.isdigit() and 1 <= int(target_choice) <= len(potential_targets):
+    #             return potential_targets[int(target_choice) - 1]
+    #         else:
+    #             print("Invalid choice, please enter a valid number.")
