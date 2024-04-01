@@ -8,13 +8,16 @@ Defines the action module for Coup. This module contains classes and functions r
 from exceptions.game_exceptions import *
 
 class Action:
-    def __init__(self, game, player, target=None, coins_needed=0, is_blockable=False):
+    def __init__(self, game, player, target=None, coins_needed=0, is_blockable=False, requires_influence=False, action_name =''):
         self.game = game
         self.player = player
         self.target = target
         self.coins_needed = coins_needed
         self.is_blockable = is_blockable
+        self.requires_influence = requires_influence
         self.can_block = [] # List of influences that can block this action
+        self.action_name = action_name
+
 
     def execute(self):
         if self.player.coins < self.coins_needed:
@@ -27,17 +30,16 @@ class Action:
 
 
 class Income(Action):
+    def __init__(self, game, player):
+        super().__init__(game, player, action_name='Income')
     def perform_action(self):
         super().execute()
         self.player.gain_coins(1)
 
-# class ForeignAid(Action):
-#     def perform_action(self):
-#         self.player.coins += 2
 
 class ForeignAid(Action):
     def __init__(self, game, player):
-        super().__init__(game, player, is_blockable=True)
+        super().__init__(game, player, is_blockable=True, action_name='Foreign Aid')
         self.can_block = ["Duke"]
 
     def perform_action(self):
@@ -46,7 +48,7 @@ class ForeignAid(Action):
 
 class Coup(Action):
     def __init__(self, game, player, target):
-        super().__init__(game, player, target, coins_needed=7)
+        super().__init__(game, player, target, coins_needed=7, action_name='Coup')
 
     def perform_action(self):
         super().execute()
@@ -55,7 +57,7 @@ class Coup(Action):
 
 class Tax(Action):
     def __init__(self, game, player):
-        super().__init__(game, player, is_blockable=True)
+        super().__init__(game, player, is_blockable=True, requires_influence=True, action_name='Tax')
 
     def perform_action(self):
         super().execute()
@@ -63,7 +65,7 @@ class Tax(Action):
 
 class Assassinate(Action):
     def __init__(self, game, player, target):
-        super().__init__(game, player, target, coins_needed=3, is_blockable=True)
+        super().__init__(game, player, target, coins_needed=3, is_blockable=True, action_name='Assassinate')
         self.can_block = ["Contessa"]
 
     def perform_action(self):
@@ -91,7 +93,7 @@ class Assassinate(Action):
 
 class Steal(Action):
     def __init__(self, game, player, target):
-        super().__init__(game, player, target, is_blockable=True)
+        super().__init__(game, player, target, is_blockable=True, requires_influence=True, action_name='Steal')
         self.can_block = ["Captain", "Ambassador"]
 
     def perform_action(self):
@@ -111,7 +113,7 @@ class Steal(Action):
 
 class Exchange(Action):
     def __init__(self, game, player):
-        super().__init__(game, player, is_blockable=True)
+        super().__init__(game, player, is_blockable=True, requires_influence=True, action_name='Exchange')
 
     def perform_action(self):
 
