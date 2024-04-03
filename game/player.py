@@ -42,7 +42,7 @@ class Player:
 
     def lose_coins(self, amount):
         if amount > self.coins:
-            raise NotEnoughCoins(f"{self.name} cannot lose more coins than they have.")
+            raise NotEnoughCoinsError(f"{self.name} cannot lose more coins than they have.")
         self.coins -= amount
 
     def gain_coins(self, amount):

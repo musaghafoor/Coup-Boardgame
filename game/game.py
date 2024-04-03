@@ -1,7 +1,7 @@
 from player import Player
 from cards.deck import Deck
 from action import *
-
+from exceptions.game_exceptions import *
 """
 TODO:
 Implement the following:
@@ -88,20 +88,13 @@ Chalenge:
                    If card is the action played, remove influence from player.
                    Else, remove influence from calling player  
 """
-class Game_R:
-    def __init__(self, number_of_players):
-        self.players = []
-        #Maybe have something where player is prompted to name themselves?
 
-        for i in range(1, number_of_players + 1):
-            player_name = "Player " + str(i)
-            self.players.append(Player(player_name))
-        
-        self.deck = Deck()
-        self.current_turn = 0
-        self.game_over = False
-        #self.active_player = self.players[self.current_turn]
+class Game:
+    def __init__(self, players, deck):
+        self.players = players
+        self.deck = deck #should this be self.deck = Deck() ?
         self.current_player_index = 0
+        self.game_over = False
         self.setup()
 
     def setup(self): 
@@ -111,12 +104,12 @@ class Game_R:
             player.hand.append(self.deck.draw_card())
             player.hand.append(self.deck.draw_card())
             player.coins = 2
-
+            
 
     def is_game_over(self):
         active_players = self.players_remaining()
         return len(active_players) <= 1
-
+    
     def players_remaining(self):
         active_players = []
         for player in self.players:
@@ -124,21 +117,45 @@ class Game_R:
                 active_players.append(player)
         return active_players
     
-    def play_turn(self):
-        player = self.players[self.current_player_index]
+    def next_player(self):
+        # Increment index by 1, if it reaches end of the list, loop back to 0
+        self.current_player_index = (self.current_player_index + 1) % len(self.players)
+
+        # Skip eliminated players
+        while self.players[self.current_player_index].is_eliminated:
+            self.current_player_index = (self.current_player_index + 1) % len(self.players)
+
+            
+    def end_game(self):
+        self.game_over = True
+        winner = self.players_remaining()[0]
+        print(f"Game over! The winner is {winner.name}.")
+        # consider more things to add?
+
+    def force_coup(self, player):
+        #do we need validation checks here
+        print(f"{player.name} has 10 or more coins and must coup.")
+        target = self.choose_target(player)
+        Coup(self, player, target).perform_action()
+
+    def play_game(self):
+        while not self.is_game_over():
+            self.play_turn(self.players[self.current_player_index])
+            if self.game_over:
+                break  # End the game loop if the game has ended
+            self.next_player()
+
+        if self.is_game_over():
+            self.end_game()
+
+    def play_turn(self, player):
+        # If player has 10 or more coins, must coup
         if player.get_coins() >= 10:
             self.force_coup(player)
         else:
             self.execute_action(player)
 
-    def force_coup(self, player):
-        print(f"{player.name} has 10 or more coins and must coup.")
-        target = self.choose_target(player)
-        Coup(self, player, target).perform_action()
-
-    
-
-        """
+            """
         1. Current player takes action
         2. Does action requires character influence :
             Yes:
@@ -172,273 +189,182 @@ class Game_R:
 
             
         """
-    #is_blockable means is challengable
-    #
+            
     def execute_action(self, player):
+        # 1. Current player chooses action
         action = self.choose_action(player)
-        # If the action requires an influence, it can be challenged.
+        # 2. Does action require character influence?
         if action.requires_influence:
-            challenger = self.prompt_public_challenge(player, action)
+            # 2a. Is action challenged?
+            challenger = self.prompt_challenge(player, action)
+            # If there is a challenger, execute challenge
             if challenger:
-                challenge_successful = self.handle_challenge(player, challenger, action)
-                if not challenge_successful:
-                    return #challenge successful
-        
+                # Returns False if challenger loses challenge. (Player wins)
+                challenge_result = self.handle_challenge(player, challenger, action)
+                if not challenge_result: #If player wins challenge, challenger loses influence
+                    if self.is_game_over(): # Check if 1 player remaining
+                        self.game_over = True
+                        return
+                    print("Move to block check")
+                    
+                else:
+                    # Challenger wins the challenge
+                    print("Turn ends.")
+                    return #Turn ends
                 
-        #If action can be blocked, call handle block
-        if action.is_blockable:
-            blocker = self.prompt_block(player, action)
+        # If action can be blocked, proceed to block check
+        # Only the target can block the action.
+        if action.is_blockable and not player.is_eliminated:
+            # Prompt target to block action
+            blocker = self.prompt_block(action.target, player, action)
+            # If target wishes to block action, execute block
             if blocker:
-                block_successful = self.handle_block(player, blocker, action)
-                if not block_successful:
-                    return #block successful
+                # Does player want to challenge blocker?
+                player_challenge_blocker = self.wants_to_challenge(player, blocker, action)
+                #player_challenge_block = self.prompt_challenge_block(player, blocker, action)
+                if player_challenge_blocker: #If player whishes to challenge blocker
+                    # Player challenges the blocker
+                    challenge_block_result = self.handle_challenge(blocker, player, action)
+                    # If player wins this challenge it will return true here
+                    if challenge_block_result: #If player wins challenge (blocker loses influence)
+                        if self.is_game_over(): # Check if 1 player remaining
+                            self.game_over = True
+                            return
+                        print(f"{player.name} now moves to perform action")
+                    else: # If blocker wins the challenge
+                        print("Turn ends.")
+                        return # Turn ends
+                else: # If player does not challenge blocker
+                    return #Turn ends as player does not challenge blocker
+        # Player performs action
+        if not player.is_eliminated:
+            action.perform_action()
 
-        action.perform_action(action)
-        #execute action either performs action or does not perform action based on above
-        pass
+    def wants_to_challenge(self, challenger, player, action):
+        # This method should ask the challenger if they want to challenge the action
+        print(f"{challenger.name}, do you want to challenge {player.name}'s {action.name}?")
+        while True:
+            decision = input("Type y for yes, n for no: ").strip().lower()
+            if decision == 'y':
+                return decision
+            elif decision == 'n':
+                return None
+            else:
+                print("Invalid input, please enter 'y' for yes or 'n' for no.")
 
-    def prompt_public_challenge(self, current_player, action):
-        if action.action_name == "Assassinate":
-            #maybe print saying player is attempting to assassinate target?
-            target = action.target
-            if target.wants_to_challenge(current_player, action):
-                print(f"{target.name} has chosen to challenge!")
-                return target #maybe say target doesnt want to challenge and might ahve to block to live or something
+    def prompt_challenge(self, player, action):
+        # Prompt the target first if they wish to challenge, otherwise prompt rest of alive players
+        if action.target and self.wants_to_challenge(action.target, player, action):
+            return action.target
+
+        # If the target player does not challenge, ask the other players
+        for challenger in self.players_remaining():
+            # Skip the action's player and the target since they've already been prompted
+            if challenger == player or challenger == action.target:
+                continue
+
+            if self.wants_to_challenge(challenger, player, action):
+                return challenger
+
+        # No one challenged
+        return None
+
+    def prompt_block(self, target, player, action):
+        print(f"{target.name}, do you want to block {player.name}'s {action.name}?")
+        while True:
+            decision = input("Type y for yes, n for no: ").strip().lower()
+            if decision == 'y':
+                return target
+            elif decision == 'n':
+                return None
+            else:
+                print("Invalid input, please enter 'y' for yes or 'n' for no.")
+
+    
+        """
+        Return false if challenger loses challenge. (Player wins)
+        If player has the influence challenged:
+            If player wants to show the card
+                return false (Player wins)
+            If player does not want to show the card
+                return true (Player loses)
+        (assuming player does not have the influence card)
+            return true (Player loses)
+
+        """
+    def handle_challenge(self, player, challenger, action):
+        card_name = action.required_card
+        card_index = player.show_card(card_name)
+
+        if card_index is not None:
+            while True:
+                decision = input(f"{player.name}, do you want to show the {action.action_name} card to win the challenge? (y/n): ").strip().lower()
+                if decision == 'y':
+                    print(f"{player.name} has shown the {card_name} card to win the challenge.")
+                    challenger.lose_influence()
+                    player.swap_card(card_index)
+                    return False
+                elif decision == 'n':
+                    print(f"{player.name} has lost the challenge")
+                    player.lose_influence()
+                    return True
+                else:
+                    print("Invalid input, please enter 'y' for yes or 'n' for no.")
         else:
-            print(f"{current_player.name} is attempting to perform {action.name}.")
-            for challenger in self.players_remaining():
-                if challenger != current_player:
-                    # make this method ??
-                    if challenger.wants_to_challenge(current_player, action):
-                        print(f"{challenger.name} has chosen to challenge {current_player.name}'s {action.name}!")
-                        return challenger
-        print("No one has chosen to challenge.")
-        return None
-    
-    def prompt_block_challenge(self, current_player, blocker, action):
-        if current_player.wants_to_challenge(blocker, action):
-            return current_player
-        return None
-
-    
-    def hande_challenge(self, player, challenger, action):
-        
-        pass
-
-    
-
-    def handle_challenge(self, player, action):
-        #should prompt for users to challenge players action. Maybe call prompt challenge
-        #if user wishes to challenge then
-            # challenger = user who wishes to challenge
-            # Does player display the card? (may choose to not reveal card)
-            #yes:
-                #    challenger loses influence
-                #    player swaps cards
-                #    returns  back to execute action and goes to next step (is blockable)
-            #no:
-                #    player loses influence
-                #    coins returned back to player/ action does not execute
-                #    returns back to exectute action and does not perform action
-        #if no user wishes to challenge then return back to execute action and go to next step (is blockable)
-        
-        pass
-
-    def handle_block(self, player, action):
-        #should prompt for users to block players action. Maybe call prompt block
-        #if user wishes to block then
-            # blocker = user who wishes to block
-            # Is blocking challenged? (prompt?)
-                # yes:
-                    # Does blocking player display the card? (may choose to not reveal card)
-                    # yes:
-                        #    challenger loses influence
-                        #    blocking player swaps cards
-                        #    returns back to execute action where it ends player turn (does not perform action)
-                    # no:
-                        #    blocking player loses influence
-                        #    go back to execute action where player performs action
-        #if no user wish to block:
-            # go back to execute action where action is executed
-
-        
-        
-
-
-
-    def run(self):
-        # Main game loop
-        while not self.game_over:
-            self.active_player = self.players[self.current_turn]
-            if not self.active_player.is_eliminated:
-                self.execute_turn(self.active_player)
-            self.check_game_over()
-            self.current_turn = (self.current_turn + 1) % len(self.players)
-
-    def execute_turn(self, player): 
-        # Perform the actions of the current player's turn
-        print(f"\n{player}'s turn.")
-        chosen_action = self.choose_action(player)
-        try:
-            # Check for challenges here before executing the action
-            self.handle_challenges(chosen_action)
-            chosen_action.perform_action()
-            # Check for blocks here after executing the action if not challenged or challenge failed
-            self.handle_blocks(chosen_action)
-        except GameException as e:
-            print(str(e))
-            # Depending on game rules, you may want to retry the turn or simply pass to the next player
-            return
-        
-    def get_available_actions(self, player):
-        actions = [Income(self, player), ForeignAid(self, player)]
-
-        if player.coins >= 3:  # Assume 3 coins are needed to perform an Assassinate
-            actions.append(Assassinate(self, player, None))  # Target is to be decided later
-
-        if player.coins >= 7:  # Assume 7 coins are needed to perform a Coup
-            actions.append(Coup(self, player, None))
-
-        actions.extend([Tax(self, player), Steal(self, player, None), Exchange(self, player)])
-
-        return actions
-    
-    def display_available_actions(self, player, available_actions):
-        print(f"\n{player.name}, choose your action:")
-        for index, action in enumerate(available_actions, 1):
-            print(f"{index}. {action.__class__.__name__}")
-
+            print(f"{player.name} does not have the {card_name} card and has lost the challenge")
+            player.lose_influence()
+            return True
 
     def choose_action(self, player):
-        if player.coins >= 10:
-            print("You have 10 or more coins and must perform a coup.")
-            return Coup(self, player, self.choose_target(player))
-    
-        available_actions = self.get_available_actions(player)
-        self.display_available_actions(player, available_actions)
-    
+        # Dictionary of available actions, with an indication if they need a target
+        actions = {
+            "1": {"action": Income(self, player), "needs_target": False},
+            "2": {"action": ForeignAid(self, player), "needs_target": False},
+            "3": {"action": Coup(self, player, None), "needs_target": True},  # Target is initially None
+            "4": {"action": Tax(self, player), "needs_target": False},
+            "5": {"action": Assassinate(self, player, None), "needs_target": True},  # Target is initially None
+            "6": {"action": Steal(self, player, None), "needs_target": True},  # Target is initially None
+            "7": {"action": Exchange(self, player), "needs_target": False}
+        }
+
+        print("Note: Some actions will require you to choose a target next.")
+        # Display available actions
+        print(f"{player.name}, choose an action:")
+        for key, val in actions.items():
+            action_note = "(needs to choose target next)" if val["needs_target"] else ""
+            print(f"{key}: {val['action'].action_name} {action_note}")
+
+        # Player chooses an action
         while True:
-            choice = input("Choose your action: ")
-            if choice.isdigit() and 0 < int(choice) <= len(available_actions):
-                selected_action = available_actions[int(choice) - 1]
-                if isinstance(selected_action, Coup):
+            choice = input("Enter the number of the action you want to perform: ").strip()
+            if choice in actions:
+                selected_action = actions[choice]["action"]
+                needs_target = actions[choice]["needs_target"]
+                
+                # If the chosen action needs a target, prompt for it
+                if needs_target:
                     target = self.choose_target(player)
-                    if target:
-                        return Coup(self, player, target)
-                else:
-                    return selected_action
+                    selected_action.target = target  # Assuming the action has a 'target' attribute to be set
+                    
+                return selected_action
             else:
-                print("Invalid choice, please select a valid action.")
+                print("Invalid choice, please enter a valid number.")
 
-
-    def handle_blocks(self, action):
-        if not action.blockable_by:
-            return
-
-        for player in self.players:
-            if player != action.player and not player.is_eliminated:
-                print(f"{player.name}, do you want to block this action? (yes/no)")
-                decision = input().strip().lower()
-                if decision == 'yes':
-                    # Assuming a simplified block logic where the block is always successful
-                    print(f"{player.name} has blocked the action!")
-                    return True
-        return False
-
-
-    def handle_challenges(self, action):
-        for player in self.players:
-            if player != action.player and not player.is_eliminated:
-                print(f"{player.name}, do you want to challenge this action? (yes/no)")
-                decision = input().strip().lower()
-                if decision == 'yes':
-                    # Implement the challenge logic
-                    print(f"{player.name} has challenged the action!")
-                    if action.player.has_card(action.__class__.__name__):
-                        print(f"Challenge failed. {action.player.name} has the {action.__class__.__name__}.")
-                        # Handle the failure of the challenge
-                    else:
-                        print(f"Challenge succeeded. {action.player.name} does not have the {action.__class__.__name__}.")
-                        # Handle the success of the challenge
-                    return True
-        return False
-    
-    def choose_target(self, acting_player):
-        print("Choose a target for your action:")
-        potential_targets = [p for p in self.players if p != acting_player and not p.is_eliminated]
-        for i, player in enumerate(potential_targets, 1):
-            print(f"{i}. {player.name}")
+    def choose_target(self, player):
+        # Assuming there is a list of players named self.players
+        # Would exclude the current player from being a target
+        targets = [p for p in self.players if p != player and not p.is_eliminated]
+        print("Choose a target:")
+        for key, target_player in targets.items():
+            print(f"{key}: {target_player.name}")
 
         while True:
-            choice = input()
-            if choice.isdigit() and 0 < int(choice) <= len(potential_targets):
-                return potential_targets[int(choice) - 1]
-            print("Invalid choice, please select a valid player.")
-
-
-
-
-
-    def check_game_over(self):
-        # Determine if the game is over and update self.game_over accordingly
-        active_players = [p for p in self.players if not p.is_eliminated()]
-        if len(active_players) == 1:
-            self.game_over = True
-            print(f"Game over! {active_players[0]} wins!")
+            target_choice = input().strip()
+            if target_choice in targets:
+                return targets[target_choice]
+            else:
+                print("Invalid choice, please try again.")
 
 if __name__ == "__main__":
     game = Game(num_players=4)
     game.run()
-
-
-# class Game:
-#     def __init__(self, players, deck):
-#         self.players = players
-#         self.deck = deck
-#         self.current_player_index = 0
-#         self.game_over = False
-
-#     def start(self):
-#         while not self.game_over:
-#             current_player = self.players[self.current_player_index]
-#             if not current_player.is_eliminated:
-#                 self.execute_turn(current_player)
-#             self.current_player_index = (self.current_player_index + 1) % len(self.players)
-#             self.check_game_over()
-
-#     def execute_turn(self, player):
-#         print(f"\n{player.name}'s turn")
-#         available_actions = self.get_available_actions(player)
-#         chosen_action = self.choose_action(player, available_actions)
-#         self.perform_action(chosen_action, player)
-
-#     def get_available_actions(self, player):
-#         # This would return a list of possible actions the player can perform
-#         return [Income(player), ForeignAid(player), Coup(self, player, None)]  # Simplified example
-
-#     def choose_action(self, player, available_actions):
-#         # Here you would implement how a player chooses an action, possibly showing a menu
-#         print(f"Available actions for {player.name}:")
-#         for i, action in enumerate(available_actions, 1):
-#             print(f"{i}. {action.__class__.__name__}")
-#         choice = int(input("Choose an action: ")) - 1
-#         return available_actions[choice]
-
-#     def perform_action(self, action, player):
-#         # Perform the chosen action and handle blocks and challenges
-#         print(f"{player.name} has chosen to {action.__class__.__name__}")
-#         action.perform_action()
-
-#         # Check for reactions from other players (blocks or challenges)
-#         for opponent in self.players:
-#             if opponent != player and not opponent.is_eliminated:
-#                 self.handle_reactions(action, opponent)
-
-#     def handle_reactions(self, action, opponent):
-#         # Placeholder for handling blocks and challenges from other players
-#         pass
-
-#     def check_game_over(self):
-#         # Check if the game is over and set self.game_over appropriately
-#         if len([player for player in self.players if not player.is_eliminated]) <= 1:
-#             self.game_over = True

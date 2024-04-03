@@ -8,29 +8,34 @@ from exceptions.game_exceptions import GameException, NoCardsLeftInDeck
 
 class Deck:
     def __init__(self):
-        """Define the characters and the number of each card to be included in the deck"""
-        self.cards = [] # Initialise the cards list
+        """Initializes a new deck of cards."""
+        self.cards = []  # Starts with an empty list of cards
+        self.set_up_deck()
+
+    def set_up_deck(self):
+        """Fills the deck with the standard set of cards."""
         characters = ["Duke", "Assassin", "Captain", "Ambassador", "Contessa"]
         number_of_each_character = 3
-        
-        # Create the deck by looping through each character a number of times
         for character in characters:
-            for i in range(number_of_each_character):
+            for _ in range(number_of_each_character):
                 self.cards.append(Card(character))
-        
-        self.shuffle()
+        self.shuffle()  # Shuffles the deck after initialization
 
     def shuffle(self):
-        """Shuffles the cards in the deck"""
-        random.shuffle(self.cards)
+        """Shuffles the deck using a more secure random number generator."""
+        random.SystemRandom().shuffle(self.cards)
 
     def draw_card(self):
-        """Draws a card from the top of the deck"""
-        if not self.cards:
-            raise NoCardsLeftInDeck("There are no cards left in the deck!")
-        return self.cards.pop()
+        """Removes and returns the top card of the deck. Raises an exception if the deck is empty."""
+        if self.cards:
+            return self.cards.pop()
+        else:
+            raise NoCardsLeftInDeck("There are no more cards left to draw from the deck.")
 
     def return_card(self, card):
-        """Returns a card to the deck and shuffles it."""
-        self.cards.append(card)
-        self.shuffle()
+        """Returns a card to the deck and shuffles it back in."""
+        if card not in self.cards:
+            self.cards.append(card)
+            self.shuffle()
+        else:
+            raise GameException(f"The card {card} is already in the deck.")
