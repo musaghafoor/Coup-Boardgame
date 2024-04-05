@@ -1,3 +1,7 @@
+"""
+Defines the action module for Coup. This module contains classes and functions related to player actions. 
+"""
+
 from exceptions.game_exceptions import *
 
 class Action:

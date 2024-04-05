@@ -1,4 +1,5 @@
 from exceptions.game_exceptions import *
+from actions.action_new import Income, ForeignAid, Coup, Tax, Assassinate, Steal, Exchange
 
 class Player:
     """
@@ -87,7 +88,6 @@ class Player:
         else:
             self.choose_influence_to_die()
 
-        
 
     def lose_card(self, card_index):
         """
@@ -205,7 +205,9 @@ class Player:
 
         if self.game is None:
             raise GameException("Error: Player is not associated with a game.")
-    
+        if card_index < 0 or card_index >= len(self.hand):
+            raise GameException("Invalid card index for swapping.")
+
         if 0 <= card_index < len(self.hand):
             removed_card = self.hand.pop(card_index)
             new_card = self.game.deck.draw_card()
@@ -224,6 +226,80 @@ class Player:
                 return False
             else:
                 print("Invalid input, please enter 'y' for yes or 'n' for no.")
+
+
+
+    # def choose_action(self):
+    #     actions = {
+    #         "1": {"action": Income(self.game, self), "needs_target": False},
+    #         "2": {"action": ForeignAid(self.game, self), "needs_target": False},
+    #         "3": {"action": Coup(self.game, self, None), "needs_target": True},
+    #         "4": {"action": Tax(self.game, self), "needs_target": False},
+    #         "5": {"action": Assassinate(self.game, self, None), "needs_target": True},
+    #         "6": {"action": Steal(self.game, self, None), "needs_target": True},
+    #         "7": {"action": Exchange(self.game, self), "needs_target": False}
+    #     }
+
+    #     valid_actions = []  # List to store actions the player can afford
+
+    #     for key, val in actions.items():
+    #         action = val["action"]
+    #         if action.coins_needed <= self.get_coins():  # Check if player can afford the action
+    #             valid_actions.append((key, val))
+
+    #     if not valid_actions:
+    #         print("You don't have enough coins to perform any action.")
+    #         return None
+
+    #     while True:
+    #         print("\nNote: Some actions will require you to choose a target next.")
+    #         print(f"{self.name}, choose an action:")
+    #         for index, val in enumerate(valid_actions, start=1):
+    #             action_note = "(needs to choose target next)" if val["needs_target"] else ""
+    #             print(f"{index}: {val['action'].action_name} {action_note}")
+
+    #         choice = input("Enter the number of the action you want to perform: ").strip()
+    #         try:
+    #             index = int(choice)
+    #             if 1 <= index <= len(valid_actions):
+    #                 selected_action = valid_actions[index - 1]["action"]
+    #                 needs_target = valid_actions[index - 1][1]["needs_target"]
+    #                 if needs_target:
+    #                     target = self.choose_target()
+    #                     if target is None:
+    #                         print("No valid targets available. Please choose a different action.")
+    #                         continue
+    #                     selected_action.target = target
+
+    #                 return selected_action
+    #             else:
+    #                 print("Invalid choice, please enter a valid number.")
+    #         except ValueError:
+    #             print("Invalid input, please enter a number.")
+    
+    # def choose_target(self):
+    #     valid_targets = []
+    #     for x in self.game.players:
+    #         if x != self and not x.is_eliminated:
+    #             valid_targets.append(x)
+
+    #     if not valid_targets:
+    #         print("No valid targets available.")
+    #         return None
+
+    #     print("\nChoose a target:")
+    #     for i, target in enumerate(valid_targets, 1):
+    #         print(f"{i}: {target.name}")
+
+    #     while True:
+    #         try:
+    #             choice = int(input(f"{self.name}, enter the number of the target you want to choose: ").strip())
+    #             if 1 <= choice <= len(valid_targets):
+    #                 return valid_targets[choice - 1]
+    #             else:
+    #                 print("Invalid choice, please select a number from the list.")
+    #         except ValueError:
+    #             print("Invalid input, please enter a number.")
 
 
     def __str__(self):
