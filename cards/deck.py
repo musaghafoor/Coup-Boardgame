@@ -8,12 +8,12 @@ from exceptions.game_exceptions import GameException, NoCardsLeftInDeck
 
 class Deck:
     def __init__(self):
-        """Initializes a new deck of cards."""
+        """Initialises a new deck of cards."""
         self.cards = []  # Starts with an empty list of cards
         self.set_up_deck()
 
     def set_up_deck(self):
-        """Fills the deck with the standard set of cards."""
+        """Fills the deck with the required amount of cards."""
         characters = ["Duke", "Assassin", "Captain", "Ambassador", "Contessa"]
         number_of_each_character = 3
         for character in characters:
@@ -22,7 +22,7 @@ class Deck:
         self.shuffle()  # Shuffles the deck after initialization
 
     def shuffle(self):
-        """Shuffles the deck using a more secure random number generator."""
+        """Shuffles the deck using a random generator."""
         random.SystemRandom().shuffle(self.cards)
 
     def draw_card(self):
